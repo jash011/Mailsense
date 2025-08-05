@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+virtualenv/
+.venv/
+env.bak/
+venv.bak/
+.env
+.venv.bak/
+
+# SQLite database
+*.sqlite3
+*.db
+*.sqlite
+
+# Credentials and OAuth
+client_secret.json
+credentials.json
+token.json
+*.pem
+*.key
+*.crt
+
+# System files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VSCode settings
+.vscode/
+
+# Pickle/model files
+*.pickle
+*.pkl
+
+# Logs
+*.log
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Other
+*.bak
+*.tmp
+
+# Ignore migrations if needed (uncomment if you want to ignore all migration files)
+# */migrations/*
