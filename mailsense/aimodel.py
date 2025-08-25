@@ -42,19 +42,16 @@ def predict_intent(text: str) -> Tuple[str, float]:
         return "unknown", 0.0
     
     try:
-        # Clean and truncate text if too long
         clean_text = text.strip()
         if len(clean_text) > 1000:
             clean_text = clean_text[:1000] + "..."
         
-        # Perform zero-shot classification
         result = classifier(
             clean_text,
             candidate_labels=EMAIL_INTENTS,
             hypothesis_template="This email is about {}."
         )
         
-        # Get the best prediction
         predicted_intent = result['labels'][0]
         confidence = result['scores'][0]
         
@@ -81,12 +78,10 @@ def classify_email_sentiment(text: str) -> Tuple[str, float]:
         return "neutral", 0.0
     
     try:
-        # Clean and truncate text
         clean_text = text.strip()
         if len(clean_text) > 1000:
             clean_text = clean_text[:1000] + "..."
         
-        # Sentiment classification
         result = classifier(
             clean_text,
             candidate_labels=["positive", "negative", "neutral"],
@@ -116,18 +111,15 @@ def classify_email_priority(text: str, subject: str = "") -> Tuple[str, float]:
     if not classifier:
         return "normal", 0.0
     
-    # Combine subject and text for better classification
     combined_text = f"Subject: {subject}\n\n{text}".strip()
     
     if not combined_text:
         return "normal", 0.0
     
     try:
-        # Clean and truncate text
         if len(combined_text) > 1000:
             combined_text = combined_text[:1000] + "..."
         
-        # Priority classification
         result = classifier(
             combined_text,
             candidate_labels=["high", "normal", "low"],
@@ -158,15 +150,12 @@ def extract_keywords(text: str, max_keywords: int = 5) -> list:
         return []
     
     try:
-        # Simple keyword extraction based on frequency
         import re
         from collections import Counter
         
-        # Clean text and split into words
         clean_text = re.sub(r'[^\w\s]', '', text.lower())
         words = clean_text.split()
         
-        # Remove common stop words
         stop_words = {
             'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
             'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
@@ -175,10 +164,8 @@ def extract_keywords(text: str, max_keywords: int = 5) -> list:
             'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them'
         }
         
-        # Filter out stop words and short words
         keywords = [word for word in words if word not in stop_words and len(word) > 3]
         
-        # Get most common keywords
         keyword_counts = Counter(keywords)
         top_keywords = [word for word, count in keyword_counts.most_common(max_keywords)]
         
@@ -203,16 +190,12 @@ def get_email_summary(text: str, max_length: int = 200) -> str:
         return "No content available"
     
     try:
-        # Simple summarization by taking first few sentences
         import re
-        
-        # Split into sentences
+
         sentences = re.split(r'[.!?]+', text.strip())
-        
-        # Filter out empty sentences
+
         sentences = [s.strip() for s in sentences if s.strip()]
-        
-        # Take first few sentences that fit within max_length
+
         summary = ""
         for sentence in sentences:
             if len(summary + sentence) <= max_length:

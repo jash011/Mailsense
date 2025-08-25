@@ -16,6 +16,7 @@ virtualenv/
 env.bak/
 venv.bak/
 .env
+.ev
 .venv.bak/
 
 # SQLite database

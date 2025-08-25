@@ -15,7 +15,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/gmail.labels'
 ]
 
-# Production mode - requires Google OAuth authentication
+
 TEST_MODE = False
 
 def check_credentials_file():
@@ -25,11 +25,10 @@ def check_credentials_file():
     Returns:
         bool: True if file exists, False otherwise
     """
-    # Check in current directory
+
     if os.path.exists('credentials.json'):
         return True
-    
-    # Check in parent directory (project root)
+
     if os.path.exists('../credentials.json'):
         return True
     
@@ -61,24 +60,21 @@ def get_gmail_service():
     """
     creds = None
     
-    # Load existing credentials from token.pickle
+    # Load existing creds from token.pickle
     if os.path.exists('token.pickle'):
         with open('token.pickle', 'rb') as token:
             creds = pickle.load(token)
-    
-    # If no valid credentials available, let user log in
+
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            # Load client secrets
             credentials_path = get_credentials_path()
             
             flow = InstalledAppFlow.from_client_secrets_file(
                 credentials_path, SCOPES)
             creds = flow.run_local_server(port=0)
         
-        # Save credentials for next run
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
     
@@ -95,7 +91,6 @@ def get_latest_message(service) -> Dict[str, Any]:
         Latest message object
     """
     try:
-        # Get messages from inbox
         results = service.users().messages().list(
             userId='me', 
             labelIds=['INBOX'],
@@ -107,7 +102,6 @@ def get_latest_message(service) -> Dict[str, Any]:
         if not messages:
             raise Exception("No messages found in inbox")
         
-        # Get full message details
         message_id = messages[0]['id']
         message = service.users().messages().get(
             userId='me', 
@@ -119,6 +113,73 @@ def get_latest_message(service) -> Dict[str, Any]:
         
     except HttpError as error:
         raise Exception(f"Gmail API error: {error}")
+
+def list_messages(service, label_ids: Optional[List[str]] = None, max_results: int = 50) -> List[Dict[str, Any]]:
+    """
+    List message metadata for given label IDs.
+    
+    Args:
+        service: Gmail service object
+        label_ids: Gmail label IDs to filter by
+        max_results: Maximum messages to return
+    
+    Returns:
+        List of message objects with id/threadId
+    """
+    try:
+        params = {
+            'userId': 'me',
+            'maxResults': max_results
+        }
+        if label_ids:
+            params['labelIds'] = label_ids
+        results = service.users().messages().list(**params).execute()
+        return results.get('messages', [])
+    except HttpError as error:
+        raise Exception(f"Gmail API error while listing messages: {error}")
+
+def get_messages_for_all_categories(service, max_per_category: int = 20) -> List[Dict[str, Any]]:
+    """
+    Fetch recent messages across Inbox and all Gmail category tabs.
+    
+    Categories include: INBOX, CATEGORY_PERSONAL, CATEGORY_PROMOTIONS, CATEGORY_SOCIAL, CATEGORY_UPDATES, CATEGORY_FORUMS.
+    
+    Args:
+        service: Gmail service
+        max_per_category: limit per category to avoid large scans
+    
+    Returns:
+        List of full message objects (format='full'), de-duplicated
+    """
+    category_labels = [
+        'INBOX',
+        'CATEGORY_PERSONAL',
+        'CATEGORY_PROMOTIONS',
+        'CATEGORY_SOCIAL',
+        'CATEGORY_UPDATES',
+        'CATEGORY_FORUMS'
+    ]
+
+    seen_ids = set()
+    messages_full: List[Dict[str, Any]] = []
+
+    for label in category_labels:
+        try:
+            meta_list = list_messages(service, label_ids=[label], max_results=max_per_category)
+            for meta in meta_list:
+                msg_id = meta.get('id')
+                if not msg_id or msg_id in seen_ids:
+                    continue
+                seen_ids.add(msg_id)
+                message = service.users().messages().get(
+                    userId='me', id=msg_id, format='full'
+                ).execute()
+                messages_full.append(message)
+        except Exception:
+            # Continue on category-specific errors
+            continue
+
+    return messages_full
 
 def create_or_get_label(service, label_name: str) -> str:
     """
@@ -132,28 +193,34 @@ def create_or_get_label(service, label_name: str) -> str:
         Label ID
     """
     try:
-        # First, try to find existing label
         results = service.users().labels().list(userId='me').execute()
         labels = results.get('labels', [])
-        
+
         for label in labels:
-            if label['name'] == label_name:
-                return label['id']
-        
-        # Create new label if not found
+            if label.get('name') == label_name:
+                return label.get('id')
+
         label_object = {
             'name': label_name,
             'labelListVisibility': 'labelShow',
             'messageListVisibility': 'show'
         }
-        
-        created_label = service.users().labels().create(
-            userId='me', 
-            body=label_object
-        ).execute()
-        
-        return created_label['id']
-        
+
+        try:
+            created_label = service.users().labels().create(
+                userId='me',
+                body=label_object
+            ).execute()
+            return created_label.get('id')
+        except HttpError:
+            # If creation failed due to a transient state, re-list and return if found
+            results = service.users().labels().list(userId='me').execute()
+            labels = results.get('labels', [])
+            for label in labels:
+                if label.get('name') == label_name:
+                    return label.get('id')
+            raise
+
     except HttpError as error:
         raise Exception(f"Error creating/getting label: {error}")
 
@@ -211,7 +278,6 @@ def get_message_content(message: Dict[str, Any]) -> str:
                 import base64
                 try:
                     html = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
-                    # Basic HTML to text conversion
                     import re
                     text = re.sub(r'<[^>]+>', '', html)
                     text = re.sub(r'\s+', ' ', text).strip()

@@ -4,7 +4,7 @@ from typing import Dict, Any
 
 def classify_email_content(payload: Dict[str, Any]) -> Dict[str, bool]:
     """
-    Classify email content based on rule-based analysis.
+    Classifying emails based on rule.
     
     Args:
         payload: Gmail message payload
@@ -20,28 +20,22 @@ def classify_email_content(payload: Dict[str, Any]) -> Dict[str, bool]:
         'money_related': False
     }
     
-    # Extract content from payload
     content_parts = extract_content_parts(payload)
     
     for content in content_parts:
-        # Check for text content
         if content.strip():
             result['text'] = True
-            
-        # Check for links (URLs)
+
         if has_links(content):
             result['link'] = True
             
-        # Check for suspicious patterns
-        if is_suspicious_content(content):
+        if has_suspicious_content(content):
             result['suspicious'] = True
             
-        # Check for urgent language
         if has_urgent_language(content):
             result['urgent_language'] = True
             
-        # Check for money-related content
-        if has_money_related_content(content):
+        if has_money_content(content):
             result['money_related'] = True
     
     return result
@@ -93,7 +87,6 @@ def has_links(content: str) -> bool:
     Returns:
         True if links found, False otherwise
     """
-    # URL patterns
     url_patterns = [
         r'https?://[^\s<>"]+|www\.[^\s<>"]+',  # HTTP/HTTPS and www URLs
         r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',  # Email addresses
@@ -107,7 +100,7 @@ def has_links(content: str) -> bool:
     return False
 
 
-def is_suspicious_content(content: str) -> bool:
+def has_suspicious_content(content: str) -> bool:
     """
     Check if content contains suspicious patterns that might indicate spam or phishing.
     
@@ -117,7 +110,6 @@ def is_suspicious_content(content: str) -> bool:
     Returns:
         True if suspicious patterns found, False otherwise
     """
-    # Suspicious patterns
     suspicious_patterns = [
         r'urgent.*action.*required',
         r'account.*suspended',
@@ -182,7 +174,7 @@ def has_urgent_language(content: str) -> bool:
     return False
 
 
-def has_money_related_content(content: str) -> bool:
+def has_money_content(content: str) -> bool:
     """
     Check if content contains money-related patterns.
     
@@ -233,10 +225,9 @@ def extract_plain_text(payload: Dict[str, Any]) -> str:
     text_content = []
     
     for content in content_parts:
-        # Basic HTML tag removal
-        clean_content = re.sub(r'<[^>]+>', '', content)
-        # Remove extra whitespace
-        clean_content = re.sub(r'\s+', ' ', clean_content).strip()
+        
+        clean_content = re.sub(r'<[^>]+>', '', content) # Basic HTML tag removal
+        clean_content = re.sub(r'\s+', ' ', clean_content).strip() # Remove extra whitespace
         if clean_content:
             text_content.append(clean_content)
     
